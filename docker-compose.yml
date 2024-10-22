@@ -1,0 +1,45 @@
+version: '3'
+services:
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - kafka-network
+
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://host.docker.internal:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka-network
+
+  product-service:
+    build: .
+    depends_on:
+      - kafka
+    volumes:
+      - ./data:/app/data  # Asegúrate de que los archivos de SQLite se guarden en 'data'
+    networks:
+      - kafka-network
+
+  order-service:
+    build: .
+    depends_on:
+      - kafka
+    volumes:
+      - ./data:/app/data  # Compartimos el volumen para los dos servicios
+    networks:
+      - kafka-network
+
+networks:
+  kafka-network:
+    driver: bridge
